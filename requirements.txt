@@ -1,0 +1,54 @@
+streamlit
+pandas
+scikit-learn
+yfinance
+C:\Users\prave\OneDrive\Desktop\stock
+python -m pip install yfinance
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
+import streamlit as st
+from model_train import train_model
+
+st.set_page_config(page_title="AI Stock Predictor")
+
+st.title("AI Stock Trend Predictor")
+
+stock = st.text_input("Enter Stock Symbol (Example: TCS.NS)", "TCS.NS")
+
+if st.button("Predict"):
+    model, data = train_model(stock)
+
+    latest = data[["Return", "MA5"]].iloc[-1:]
+    prediction = model.predict(latest)
+
+    if prediction[0] == 1:
+        st.success("Prediction: Stock will go UP")
+    else:
+        st.error("Prediction: Stock will go DOWN")
+
+    st.line_chart(data["Close"])
+import pandas as pd
+import yfinance as yf
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+def train_model(stock_name):
+    data = yf.download(stock_name, period="1y")
+
+    data["Return"] = data["Close"].pct_change()
+    data["MA5"] = data["Close"].rolling(5).mean()
+    data["Target"] = (data["Close"].shift(-1) > data["Close"]).astype(int)
+
+    data = data.dropna()
+
+    X = data[["Return", "MA5"]]
+    y = data["Target"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+
+    return model, data
